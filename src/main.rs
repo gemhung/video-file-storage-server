@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use poem::{error::BadRequest, listener::TcpListener, Result, Route, Server};
 use poem_openapi::{
     param::Path,
-    payload::{Attachment, AttachmentType, Json},
+    payload::{Attachment, AttachmentType, Json, PlainText},
     types::multipart::Upload,
     ApiResponse, Multipart, Object, OpenApi, OpenApiService,
 };
@@ -14,10 +14,8 @@ use uuid::Uuid;
 
 #[derive(Debug, Object, Clone)]
 struct File {
-    name: String,
-    desc: Option<String>,
     content_type: Option<String>,
-    filename: Option<String>,
+    filename: String,
     data: Vec<u8>,
     created_at: String,
 }
@@ -53,21 +51,25 @@ enum DeleteFileResponse {
 #[oai(bad_request_handler = "bad_request_handler")]
 enum UploadFileResponse {
     /// File uploaded
-    #[oai(status = 201)]
-    Success(#[oai(header = "Location")] String),
+    #[oai(status = 201, content_type = "text/plain")]
+    Success(PlainText<String>, #[oai(header = "Location")] String),
     /// Bad request
     #[oai(status = 400)]
-    BadRequest,
+    BadRequest(PlainText<String>),
     /// File exists
     #[oai(status = 409)]
     FileExists,
     /// Unsupported Media Type
     #[oai(status = 415)]
     UnsupportedMediaType,
+    /// Internal Error
+    #[oai(status = 999)]
+    InternalError,
 }
 
-fn bad_request_handler(_err: poem::Error) -> UploadFileResponse {
-    UploadFileResponse::BadRequest
+fn bad_request_handler(err: poem::Error) -> UploadFileResponse {
+    tracing::info!(?err);
+    UploadFileResponse::BadRequest(PlainText(err.to_string()))
 }
 
 #[derive(Debug, ApiResponse)]
@@ -95,9 +97,7 @@ struct Status {
 
 #[derive(Debug, Multipart)]
 struct UploadPayload {
-    name: String,
-    desc: Option<String>,
-    file: Upload,
+    data: Upload,
 }
 
 struct Api {
@@ -120,9 +120,9 @@ impl Api {
             Some(file) => {
                 let mut attachment =
                     Attachment::new(file.data.clone()).attachment_type(AttachmentType::Attachment);
-                if let Some(filename) = &file.filename {
-                    attachment = attachment.filename(filename);
-                }
+                //if let Some(filename) = &file.filename {
+                    attachment = attachment.filename(&file.filename);
+                //}
                 GetFileResponse::Ok(attachment)
             }
             None => GetFileResponse::NotFound,
@@ -137,7 +137,7 @@ impl Api {
             .files
             .remove(&fileid.0)
             .map(|file| {
-                status.name.remove(&file.name);
+                status.name.remove(&file.filename);
                 DeleteFileResponse::Success
             })
             .unwrap_or_else(|| DeleteFileResponse::NotFound)
@@ -146,34 +146,31 @@ impl Api {
     /// Upload a video file
     #[oai(path = "/files", method = "post")]
     async fn upload(&self, upload: UploadPayload) -> UploadFileResponse {
-        let Some(name) = upload.file.file_name().map(ToString::to_string) else {
-            return UploadFileResponse::BadRequest;
+        let Some(filename) = upload.data.file_name().map(ToString::to_string) else {
+            return UploadFileResponse::InternalError;
         };
 
-        match upload.file.content_type() {
+        match upload.data.content_type() {
             Some("video/mp4" | "video/mpeg") => {},
             _ => {
                 return UploadFileResponse::UnsupportedMediaType;
             }
         }
-
         let mut status = self.status.write().await;
-        if status.name.contains_key(&name) {
+        if status.name.contains_key(&filename) {
             return UploadFileResponse::FileExists;
         }
         let id = Uuid::new_v4().to_string();
         let file = File {
-            name: upload.name,
-            desc: upload.desc,
-            content_type: upload.file.content_type().map(ToString::to_string),
-            filename: upload.file.file_name().map(ToString::to_string),
-            data: upload.file.into_vec().await.map_err(BadRequest).unwrap(),
+            content_type: upload.data.content_type().map(ToString::to_string),
+            filename:filename.clone(),
+            data: upload.data.into_vec().await.map_err(BadRequest).unwrap(),
             created_at: now(),
         };
         status.files.insert(id.clone(), file);
-        status.name.insert(name, id);
+        status.name.insert(filename, id);
 
-        UploadFileResponse::Success("bucket1".to_string())
+        UploadFileResponse::Success(PlainText("".to_string()), "bucket1".to_string())
     }
 
     /// List uploaded files
@@ -185,7 +182,7 @@ impl Api {
             .iter()
             .map(|(id, file)| UploadedFile {
                 fileid: id.to_string(),
-                name: file.filename.clone().unwrap_or_default(),
+                name: file.filename.clone(),
                 size: file.data.len(),
                 created_at: file.created_at.clone(),
             })
