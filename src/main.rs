@@ -218,10 +218,10 @@ async fn main() -> Result<(), std::io::Error> {
         "Video Storage Server API",
         "1.0",
     )
-    .server("http://localhost:8080/v1");
+    .server("http://0.0.0.0:8080/v1");
     let ui = api_service.swagger_ui();
 
-    Server::new(TcpListener::bind("localhost:8080"))
+    Server::new(TcpListener::bind("0.0.0.0:8080"))
         .run(Route::new().nest("/v1", api_service).nest("/", ui))
         .await
 }
