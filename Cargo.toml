@@ -6,9 +6,9 @@ publish = false
 
 [dependencies]
 #poem = { path = "../../../poem", features = ["multipart", "tempfile"] }
-time = { version = "0.3", features = ["macros", "local-offset"] }
+time = { version = "0.3", features = ["macros", "local-offset", "formatting"] }
 poem = { version = "*", features = ["multipart", "tempfile"] }
-poem-openapi = { version = "*", features = ["swagger-ui"] }
+poem-openapi = { version = "2", features = ["swagger-ui"] }
 tokio = { version = "1.17.0", features = ["macros", "rt-multi-thread"] }
 uuid = { version = "1", features = ["v4"] }
 anyhow = "*"

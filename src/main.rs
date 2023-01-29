@@ -30,8 +30,10 @@ enum HealthCheckResponse {
 #[derive(Debug, ApiResponse)]
 enum GetFileResponse {
     /// OK
-    #[oai(status = 200)]
-    Ok(Attachment<Vec<u8>>),
+    #[oai(status = 200, content_type = "video/mp4")]
+    OKMP4(Attachment<Vec<u8>>),
+    #[oai(status = 200, content_type = "video/mpeg")]
+    OKMPEG(Attachment<Vec<u8>>),
     /// File not found
     #[oai(status = 404)]
     NotFound,
@@ -51,7 +53,7 @@ enum DeleteFileResponse {
 #[oai(bad_request_handler = "bad_request_handler")]
 enum UploadFileResponse {
     /// File uploaded
-    #[oai(status = 201, content_type = "text/plain")]
+    #[oai(status = 201, header(name="Location", type = "String"))]
     Success(PlainText<String>, #[oai(header = "Location")] String),
     /// Bad request
     #[oai(status = 400)]
@@ -68,7 +70,6 @@ enum UploadFileResponse {
 }
 
 fn bad_request_handler(err: poem::Error) -> UploadFileResponse {
-    tracing::info!(?err);
     UploadFileResponse::BadRequest(PlainText(err.to_string()))
 }
 
@@ -123,7 +124,17 @@ impl Api {
                 //if let Some(filename) = &file.filename {
                     attachment = attachment.filename(&file.filename);
                 //}
-                GetFileResponse::Ok(attachment)
+                match file.content_type.as_deref() {
+                    Some("video/mp4") => {
+                        GetFileResponse::OKMP4(attachment)
+                    }
+                    Some("video/mpeg") => {
+                        GetFileResponse::OKMPEG(attachment)
+                    }
+                    _ => {
+                        GetFileResponse::NotFound
+                    }
+                }
             }
             None => GetFileResponse::NotFound,
         }
@@ -167,10 +178,12 @@ impl Api {
             data: upload.data.into_vec().await.map_err(BadRequest).unwrap(),
             created_at: now(),
         };
+        let location = format!("./mypath/{}", id);
         status.files.insert(id.clone(), file);
         status.name.insert(filename, id);
 
-        UploadFileResponse::Success(PlainText("".to_string()), "bucket1".to_string())
+        UploadFileResponse::Success(PlainText("".to_string()), location)
+        //UploadFileResponse::Success("bucket1".to_string())
     }
 
     /// List uploaded files
@@ -193,8 +206,10 @@ impl Api {
 }
 
 fn now() -> String {
+    let format = format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond digits:9]Z");
     time::OffsetDateTime::now_utc()
-        .to_offset(offset!(+9)) // Japan time zone
+        //.to_offset(offset!(+9)) // Japan time zone
+        .format(&format).unwrap()
         .to_string()
 }
 
