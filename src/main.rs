@@ -23,8 +23,15 @@ async fn main() -> Result<(), std::io::Error> {
     )
     .server("http://0.0.0.0:8080/v1");
     let ui = api_service.swagger_ui();
-
+    let spec = api_service.spec_endpoint();
+    let spec_yaml = api_service.spec_endpoint_yaml();
     Server::new(TcpListener::bind("0.0.0.0:8080"))
-        .run(Route::new().nest("/v1", api_service).nest("/", ui))
+        .run(
+            Route::new()
+                .nest("/v1", api_service)
+                .nest("/", ui)
+                .at("/spec", spec)
+                .at("/spec_yaml", spec_yaml),
+        )
         .await
 }
