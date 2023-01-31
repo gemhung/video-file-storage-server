@@ -23,6 +23,8 @@ jobs:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v3
         name: Pull repo
+      - name: cargo clippy
+        run: cargo clippy -- -D warnings
       - name: Run Docker Compose
         run: docker-compose up -d
       #- name: Build docker tester
