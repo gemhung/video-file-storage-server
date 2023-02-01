@@ -1,20 +1,21 @@
-use poem::error::BadRequest;
 use poem_openapi::{
     param::Path,
     payload::{Attachment, AttachmentType, Json, PlainText},
     types::multipart::Upload,
     ApiResponse, Multipart, Object,
 };
-use time::macros::*;
+use time::format_description::FormatItem;
+use time::macros::format_description;
+use tracing::error;
 use uuid::Uuid;
 
 #[derive(Debug, ApiResponse)]
 pub enum DownloadFileResponse {
     /// OK
     #[oai(status = 200, content_type = "video/mp4")]
-    OKMP4(Attachment<Vec<u8>>),
+    MP4(Attachment<Vec<u8>>),
     #[oai(status = 200, content_type = "video/mpeg")]
-    OKMPEG(Attachment<Vec<u8>>),
+    MPEG(Attachment<Vec<u8>>),
     /// File not found
     #[oai(status = 404)]
     NotFound,
@@ -34,8 +35,8 @@ pub enum DeleteFileResponse {
 #[oai(bad_request_handler = "bad_request_handler")]
 pub enum UploadFileResponse {
     /// File uploaded
-    #[oai(status = 201, header(name = "Location", type = "String"))]
-    Success(PlainText<String>, #[oai(header = "Location")] String),
+    #[oai(status = 201)]
+    Success(#[oai(header = "Location")] String),
     /// Bad request
     #[oai(status = 400)]
     BadRequest(PlainText<String>),
@@ -54,12 +55,13 @@ fn bad_request_handler(err: poem::Error) -> UploadFileResponse {
     UploadFileResponse::BadRequest(PlainText(err.to_string()))
 }
 
+// ISO 8601 time format
+const TIME_FORMAT_8601: &[FormatItem] =
+    format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond digits:9]Z");
+
 fn now() -> String {
-    let format =
-        format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond digits:9]Z");
     time::OffsetDateTime::now_utc()
-        //.to_offset(offset!(+9)) // Japan time zone
-        .format(&format)
+        .format(&TIME_FORMAT_8601)
         .unwrap()
 }
 
@@ -70,10 +72,10 @@ pub struct UploadPayload {
 
 #[derive(Debug, Object, Clone)]
 pub struct File {
-    pub content_type: Option<String>,
-    pub filename: String,
-    pub data: Vec<u8>,
-    pub created_at: String,
+    content_type: String,
+    filename: String,
+    data: Vec<u8>,
+    created_at: String,
 }
 
 #[derive(Debug, Object)]
@@ -95,29 +97,36 @@ pub enum ListFileResponse {
 
 impl crate::api::Api {
     pub async fn download_impl(&self, fileid: Path<String>) -> DownloadFileResponse {
+        let Ok(id) = uuid::Uuid::parse_str(&fileid.0) else {
+            return DownloadFileResponse::NotFound;
+        };
         let status = self.status.read().await;
-        match status.files.get(&fileid.0) {
+        match status.files.get(&id) {
+            None => DownloadFileResponse::NotFound,
             Some(file) => {
-                let mut attachment =
-                    Attachment::new(file.data.clone()).attachment_type(AttachmentType::Attachment);
-                //if let Some(filename) = &file.filename {
-                attachment = attachment.filename(&file.filename);
-                //}
-                match file.content_type.as_deref() {
-                    Some("video/mp4") => DownloadFileResponse::OKMP4(attachment),
-                    Some("video/mpeg") => DownloadFileResponse::OKMPEG(attachment),
+                let attachment =
+                    Attachment::new(file.data.clone())
+                    .attachment_type(AttachmentType::Attachment)
+                    .filename(&file.filename);
+                match file.content_type.as_str() {
+                    "video/mp4" => DownloadFileResponse::MP4(attachment),
+                    "video/mpeg" => DownloadFileResponse::MPEG(attachment),
                     _ => DownloadFileResponse::NotFound,
                 }
             }
-            None => DownloadFileResponse::NotFound,
         }
     }
 
     pub async fn delete_impl(&self, fileid: Path<String>) -> DeleteFileResponse {
+        // Invalid uuid is considered as not found
+        let Ok(id) = uuid::Uuid::parse_str(&fileid.0) else {
+            return DeleteFileResponse::NotFound;
+        };
+        // Try delete
         let mut status = self.status.write().await;
         status
             .files
-            .remove(&fileid.0)
+            .remove(&id)
             .map(|file| {
                 status.name.remove(&file.filename);
                 DeleteFileResponse::Success
@@ -126,33 +135,48 @@ impl crate::api::Api {
     }
 
     pub async fn upload_impl(&self, upload: UploadPayload) -> UploadFileResponse {
-        let Some(filename) = upload.data.file_name().map(ToString::to_string) else {
+        // Checking if empty file name
+        let Some(filename) = upload.data.file_name() else {
             return UploadFileResponse::InternalError;
         };
 
-        match upload.data.content_type() {
-            Some("video/mp4" | "video/mpeg") => {}
+        // Checking if expected content_type
+        let content_type = match upload.data.content_type() {
+            Some(inner @ ("video/mp4" | "video/mpeg")) => inner.to_string(),
             _ => {
                 return UploadFileResponse::UnsupportedMediaType;
             }
-        }
+        };
+        let filename = filename.to_string();
+        // Extracting file data
+        let data = match upload.data.into_vec().await {
+            Ok(data) => data,
+            Err(err) => {
+                error!(?err);
+                return UploadFileResponse::InternalError;
+            }
+        };
+        let id = Uuid::new_v4();
+        let created_at = now();
+        // The idea is to minimize the duration of operations when locked
         let mut status = self.status.write().await;
+        // Checking if File already existed
         if status.name.contains_key(&filename) {
             return UploadFileResponse::FileExists;
         }
-        let id = Uuid::new_v4().to_string();
+        // Create mapping between filename and uuid
+        status.name.insert(filename.clone(), id);
+        // Create mapping between uuid and file
         let file = File {
-            content_type: upload.data.content_type().map(ToString::to_string),
-            filename: filename.clone(),
-            data: upload.data.into_vec().await.map_err(BadRequest).unwrap(),
-            created_at: now(),
+            filename,
+            content_type,
+            data,
+            created_at,
         };
-        let location = format!("./mypath/{}", id);
-        status.files.insert(id.clone(), file);
-        //status.name.insert(filename, id);
+        status.files.insert(id, file);
+        drop(status); // release lock
 
-        UploadFileResponse::Success(PlainText("".to_string()), location)
-        //UploadFileResponse::Success("bucket1".to_string())
+        UploadFileResponse::Success(format!("./mypath/{}", id))
     }
 
     pub async fn list_impl(&self) -> ListFileResponse {

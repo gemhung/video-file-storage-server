@@ -1,6 +1,5 @@
 use poem::{listener::TcpListener, Result, Route, Server};
 use poem_openapi::OpenApiService;
-use tokio::sync::RwLock;
 
 pub mod api;
 
@@ -13,7 +12,7 @@ async fn main() -> Result<(), std::io::Error> {
 
     let api_service = OpenApiService::new(
         api::Api {
-            status: RwLock::new(api::Status {
+            status: tokio::sync::RwLock::new(api::Status {
                 files: Default::default(),
                 name: Default::default(),
             }),
@@ -21,11 +20,11 @@ async fn main() -> Result<(), std::io::Error> {
         "Video Storage Server API",
         "1.0",
     )
-    .server("http://0.0.0.0:8080/v1");
+    .server("http://localhost:8080/v1");
     let ui = api_service.swagger_ui();
     let spec = api_service.spec_endpoint();
     let spec_yaml = api_service.spec_endpoint_yaml();
-    Server::new(TcpListener::bind("0.0.0.0:8080"))
+    Server::new(TcpListener::bind("localhost:8080"))
         .run(
             Route::new()
                 .nest("/v1", api_service)

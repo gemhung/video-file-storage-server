@@ -5,12 +5,11 @@ edition = "2021"
 publish = false
 
 [dependencies]
-#poem = { path = "../../../poem", features = ["multipart", "tempfile"] }
+anyhow = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3.9", features = ["env-filter"] }
 time = { version = "0.3", features = ["macros", "local-offset", "formatting"] }
-poem = { version = "*", features = ["multipart", "tempfile"] }
-poem-openapi = { version = "2", features = ["swagger-ui"] }
+poem = { version = "1", features = ["multipart", "tempfile"] }
+poem-openapi = { version = "2", features = ["swagger-ui", "uuid"] }
 tokio = { version = "1.17.0", features = ["macros", "rt-multi-thread"] }
 uuid = { version = "1", features = ["v4"] }
-anyhow = "*"
-tracing = "*"
-tracing-subscriber = { version = "0.3.9", features = ["env-filter"] }

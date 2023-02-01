@@ -11,8 +11,8 @@ pub struct Api {
 }
 
 pub struct Status {
-    pub files: HashMap<String, files::File>,
-    pub name: HashMap<String, String>,
+    pub files: HashMap<uuid::Uuid, files::File>,
+    pub name: HashMap<String, uuid::Uuid>,
 }
 
 #[OpenApi]
