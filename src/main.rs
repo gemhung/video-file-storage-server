@@ -1,11 +1,11 @@
 use poem::{listener::TcpListener, Result, Route, Server};
 use poem_openapi::OpenApiService;
 
-pub mod api;
+mod api;
 
 #[tokio::main]
 async fn main() -> Result<(), std::io::Error> {
-    // log init
+    // Log init
     tracing_subscriber::fmt()
         .with_line_number(true)
         .with_file(true)
@@ -16,12 +16,15 @@ async fn main() -> Result<(), std::io::Error> {
 
     // Openapi service
     let api_service = OpenApiService::new(
-        api::Api {
-            status: tokio::sync::RwLock::new(api::Status {
-                files: Default::default(),
-                name: Default::default(),
-            }),
-        },
+        (
+            api::health::HealthApi,
+            api::files::FilesApi {
+                status: tokio::sync::RwLock::new(api::files::Status {
+                    files: Default::default(),
+                    name: Default::default(),
+                }),
+            },
+        ),
         "Video Storage Server API",
         "1.0",
     )

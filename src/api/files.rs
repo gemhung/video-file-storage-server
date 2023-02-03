@@ -1,11 +1,14 @@
+use poem_openapi::OpenApi;
 use poem_openapi::{
     param::Path,
     payload::{Attachment, AttachmentType, Json, PlainText},
     types::multipart::Upload,
     ApiResponse, Multipart, Object,
 };
+use std::collections::HashMap;
 use time::format_description::FormatItem;
 use time::macros::format_description;
+use tokio::sync::RwLock;
 use tracing::error;
 use uuid::Uuid;
 
@@ -98,8 +101,28 @@ pub enum ListFileResponse {
     OK(Json<Vec<UploadedFile>>),
 }
 
-impl crate::api::Api {
-    pub async fn download_impl(&self, fileid: Path<String>) -> DownloadFileResponse {
+pub struct FilesApi {
+    pub status: RwLock<Status>,
+}
+
+pub struct Status {
+    pub files: HashMap<uuid::Uuid, File>,
+    pub name: HashMap<String, uuid::Uuid>,
+}
+
+#[OpenApi]
+impl FilesApi {
+    /*
+    /// Return the health of the service as HTTP 200 status. Useful to check if everything is configured correctly.
+    #[oai(path = "/health", method = "get")]
+    async fn health_check(&self) -> health::HealthCheckResponse {
+        self.health_check_impl()
+    }
+    */
+
+    /// Download a video file by fileid. The file name will be restored as it was when you uploaded it.
+    #[oai(path = "/files/:fileid", method = "get")]
+    async fn download(&self, fileid: Path<String>) -> DownloadFileResponse {
         let Ok(id) = uuid::Uuid::parse_str(&fileid.0) else {
             return DownloadFileResponse::NotFound;
         };
@@ -129,7 +152,9 @@ impl crate::api::Api {
         }
     }
 
-    pub async fn delete_impl(&self, fileid: Path<String>) -> DeleteFileResponse {
+    /// Delete a video file
+    #[oai(path = "/files/:fileid", method = "delete")]
+    async fn delete(&self, fileid: Path<String>) -> DeleteFileResponse {
         // Invalid uuid is considered as not found
         let Ok(id) = uuid::Uuid::parse_str(&fileid.0) else {
             return DeleteFileResponse::NotFound;
@@ -146,7 +171,9 @@ impl crate::api::Api {
             .unwrap_or_else(|| DeleteFileResponse::NotFound)
     }
 
-    pub async fn upload_impl(&self, upload: UploadPayload) -> UploadFileResponse {
+    /// Upload a video file
+    #[oai(path = "/files", method = "post")]
+    async fn upload(&self, upload: UploadPayload) -> UploadFileResponse {
         // Checking if empty file name
         let Some(filename) = upload.data.file_name() else {
             return UploadFileResponse::InternalError;
@@ -199,7 +226,9 @@ impl crate::api::Api {
         UploadFileResponse::Success(format!("./mypath/{}", id))
     }
 
-    pub async fn list_impl(&self) -> ListFileResponse {
+    /// List uploaded files
+    #[oai(path = "/files", method = "get")]
+    async fn list(&self) -> ListFileResponse {
         let status = self.status.read().await;
         let vec = status
             .files
