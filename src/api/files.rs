@@ -19,6 +19,9 @@ pub enum DownloadFileResponse {
     /// File not found
     #[oai(status = 404)]
     NotFound,
+    /// Internal Error
+    #[oai(status = 999)]
+    InternalError,
 }
 
 #[derive(Debug, ApiResponse)]
@@ -104,8 +107,17 @@ impl crate::api::Api {
         match status.files.get(&id) {
             None => DownloadFileResponse::NotFound,
             Some(file) => {
-                let attachment =
-                    Attachment::new(file.data.clone())
+                // Read file from "./storage"
+                let path = std::path::Path::new("./storage").join(id.to_string());
+                let data = match tokio::fs::read(path).await {
+                    Ok(inner) => inner,
+                    Err(err) => {
+                        error!(?err);
+                        return DownloadFileResponse::InternalError;
+                    }
+                };
+
+                let attachment = Attachment::new(data)
                     .attachment_type(AttachmentType::Attachment)
                     .filename(&file.filename);
                 match file.content_type.as_str() {
@@ -158,7 +170,15 @@ impl crate::api::Api {
         };
         let id = Uuid::new_v4();
         let created_at = now();
-        // The idea is to minimize the duration of operations when locked
+
+        // Save file data to local storage
+        let path = std::path::Path::new("./storage").join(id.to_string());
+        if let Err(err) = tokio::fs::write(path, data.clone()).await {
+            error!(?err);
+            return UploadFileResponse::InternalError;
+        }
+        // When locking, the idea is to minimize the duration of operations
+        // to shorten the locking time
         let mut status = self.status.write().await;
         // Checking if File already existed
         if status.name.contains_key(&filename) {
