@@ -19,10 +19,7 @@ async fn main() -> Result<(), std::io::Error> {
         (
             api::health::HealthApi,
             api::files::FilesApi {
-                status: tokio::sync::RwLock::new(api::files::Status {
-                    files: Default::default(),
-                    name: Default::default(),
-                }),
+                ..Default::default()
             },
         ),
         "Video Storage Server API",

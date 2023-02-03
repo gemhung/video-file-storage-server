@@ -13,8 +13,11 @@ use tracing::error;
 use tracing::warn;
 use uuid::Uuid;
 
+const MP4: &str = "video/mp4";
+const MPEG: &str = "video/mpeg";
+
 #[derive(Debug, ApiResponse)]
-pub enum DownloadOkResponse {
+enum DownloadOkResponse {
     /// OK
     #[oai(status = 200, content_type = "video/mp4")]
     MP4(Attachment<Vec<u8>>),
@@ -24,7 +27,7 @@ pub enum DownloadOkResponse {
 }
 
 #[derive(Debug, ApiResponse)]
-pub enum DownloadErrorResponse {
+enum DownloadErrorResponse {
     /// File not found
     #[oai(status = 404)]
     NotFound,
@@ -34,21 +37,21 @@ pub enum DownloadErrorResponse {
 }
 
 #[derive(Debug, ApiResponse)]
-pub enum DeleteOkResponse {
+enum DeleteOkResponse {
     /// File was successfully removed
     #[oai(status = 204)]
     Success,
 }
 
 #[derive(Debug, ApiResponse)]
-pub enum DeleteErrorResponse {
+enum DeleteErrorResponse {
     /// File not found
     #[oai(status = 404)]
     NotFound,
 }
 
 #[derive(Debug, ApiResponse)]
-pub enum UploadOkResponse {
+enum UploadOkResponse {
     /// File uploaded
     #[oai(status = 201)]
     Success(#[oai(header = "Location")] String),
@@ -56,7 +59,7 @@ pub enum UploadOkResponse {
 
 #[derive(Debug, ApiResponse)]
 #[oai(bad_request_handler = "bad_request_handler")]
-pub enum UploadErrorResponse {
+enum UploadErrorResponse {
     /// Bad request
     #[oai(status = 400)]
     BadRequest(PlainText<String>),
@@ -78,7 +81,6 @@ fn bad_request_handler(err: poem::Error) -> UploadErrorResponse {
 // ISO 8601 time format
 const TIME_FORMAT_8601: &[FormatItem] =
     format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond digits:9]Z");
-
 fn now() -> String {
     time::OffsetDateTime::now_utc()
         .format(&TIME_FORMAT_8601)
@@ -86,7 +88,7 @@ fn now() -> String {
 }
 
 #[derive(Debug, Multipart)]
-pub struct UploadPayload {
+struct UploadPayload {
     data: Upload,
 }
 
@@ -99,7 +101,7 @@ pub struct File {
 }
 
 #[derive(Debug, Object)]
-pub struct UploadedFile {
+struct UploadedFile {
     fileid: String,
     /// filename
     name: String,
@@ -108,18 +110,14 @@ pub struct UploadedFile {
     /// Time when the data was saved on the server side
     created_at: String,
 }
-#[derive(Debug, ApiResponse)]
-pub enum ListFileResponse {
-    /// File list
-    #[oai(status = 200)]
-    OK(Json<Vec<UploadedFile>>),
-}
 
+#[derive(Default)]
 pub struct FilesApi {
-    pub status: RwLock<Status>,
+    pub rwlock: RwLock<Resource>,
 }
 
-pub struct Status {
+#[derive(Default)]
+pub struct Resource {
     pub files: HashMap<uuid::Uuid, File>,
     pub name: HashMap<String, uuid::Uuid>,
 }
@@ -128,7 +126,6 @@ pub struct Status {
 impl FilesApi {
     /// Download a video file by fileid. The file name will be restored as it was when you uploaded it.
     #[oai(path = "/files/:fileid", method = "get")]
-    //async fn download(&self, fileid: Path<String>) -> DownloadFileResponse {
     async fn download(
         &self,
         fileid: Path<String>,
@@ -138,16 +135,15 @@ impl FilesApi {
             warn!(?err);
             DownloadErrorResponse::NotFound
         })?;
-        let status = self.status.read().await;
-        let file = status
+        let resource = self.rwlock.read().await;
+        let file = resource
             .files
             .get(&id)
             .ok_or(DownloadErrorResponse::NotFound)?;
         let filename = file.filename.clone();
         let content_type = file.content_type.clone();
-        // Drop here because its work is done
-        drop(status);
-        // Read file from "./storage" directory
+        drop(resource); // Drop here to gain performance
+                        // Read file from "./storage" directory
         let read_path = std::path::Path::new("./storage").join(id.to_string());
         let data = tokio::fs::read(read_path).await.map_err(|err| {
             error!(?err);
@@ -158,8 +154,8 @@ impl FilesApi {
             .attachment_type(AttachmentType::Attachment)
             .filename(&filename);
         match content_type.as_str() {
-            "video/mp4" => Ok(DownloadOkResponse::MP4(attachment)),
-            "video/mpeg" => Ok(DownloadOkResponse::Mpeg(attachment)),
+            MP4 => Ok(DownloadOkResponse::MP4(attachment)),
+            MPEG => Ok(DownloadOkResponse::Mpeg(attachment)),
             // Unlikely path if 'upload' implementation is correct
             _ => Err(DownloadErrorResponse::NotFound),
         }
@@ -175,13 +171,13 @@ impl FilesApi {
         })?;
 
         // Lock to delete
-        let mut status = self.status.write().await;
-        status
+        let mut resource = self.rwlock.write().await;
+        resource
             .files
             .remove(&id)
             .map(|file| {
                 // Because file was deleted, the coresspoding name is also gone
-                let _ = status.name.remove(&file.filename);
+                let _ = resource.name.remove(&file.filename);
                 DeleteOkResponse::Success
             })
             .ok_or(DeleteErrorResponse::NotFound)
@@ -196,17 +192,17 @@ impl FilesApi {
             .file_name()
             .ok_or(UploadErrorResponse::InternalError)?;
         // Checking if File already existed
-        let status = self.status.read().await;
-        if status.name.contains_key(filename) {
+        let resource = self.rwlock.read().await;
+        if resource.name.contains_key(filename) {
             return Err(UploadErrorResponse::FileExists);
         }
-        drop(status); // release lock to be nice to others
+        drop(resource); // Release lock to be nice to others
 
         // Checking if expected content_type
         let content_type = upload
             .data
             .content_type()
-            .filter(|ty| matches!(ty, &"video/mp4" | &"video/mpeg"))
+            .filter(|&ty| matches!(ty, MP4 | MPEG))
             .ok_or(UploadErrorResponse::UnsupportedMediaType)?
             .to_string();
         let filename = filename.to_string();
@@ -224,19 +220,19 @@ impl FilesApi {
             UploadErrorResponse::InternalError
         })?;
         // Expensive locking to write
-        let mut status = self.status.write().await;
+        let mut resource = self.rwlock.write().await;
         /*
             Here we check again if File already existed
             Note that this checking is mandatory here even we've checked in the begining of this method
             It's unlikeyly to happen but still has a chance becaue that's the nature of multi-thread
         */
-        if status.name.contains_key(&filename) {
+        if resource.name.contains_key(&filename) {
             return Err(UploadErrorResponse::FileExists);
         }
         // Create mapping between filename and uuid
-        status.name.insert(filename.clone(), id);
+        resource.name.insert(filename.clone(), id);
         // Create mapping between uuid and file
-        status.files.insert(
+        resource.files.insert(
             id,
             File {
                 filename,
@@ -245,7 +241,7 @@ impl FilesApi {
                 created_at,
             },
         );
-        drop(status); // release lock
+        drop(resource); // release lock
 
         Ok(UploadOkResponse::Success(format!("./storage/{}", id)))
     }
@@ -253,8 +249,8 @@ impl FilesApi {
     /// List uploaded files
     #[oai(path = "/files", method = "get")]
     async fn list(&self) -> Json<Vec<UploadedFile>> {
-        let status = self.status.read().await;
-        let vec = status
+        let resource = self.rwlock.read().await;
+        let vec = resource
             .files
             .iter()
             .map(|(id, file)| UploadedFile {
