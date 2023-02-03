@@ -18,6 +18,7 @@ pub enum DownloadOkResponse {
     /// OK
     #[oai(status = 200, content_type = "video/mp4")]
     MP4(Attachment<Vec<u8>>),
+    /// OK
     #[oai(status = 200, content_type = "video/mpeg")]
     Mpeg(Attachment<Vec<u8>>),
 }
@@ -142,8 +143,11 @@ impl FilesApi {
             .files
             .get(&id)
             .ok_or(DownloadErrorResponse::NotFound)?;
-
-        // Read file from "./storage"
+        let filename = file.filename.clone();
+        let content_type = file.content_type.clone();
+        // Drop here because its work is done
+        drop(status);
+        // Read file from "./storage" directory
         let read_path = std::path::Path::new("./storage").join(id.to_string());
         let data = tokio::fs::read(read_path).await.map_err(|err| {
             error!(?err);
@@ -152,10 +156,11 @@ impl FilesApi {
 
         let attachment = Attachment::new(data)
             .attachment_type(AttachmentType::Attachment)
-            .filename(&file.filename);
-        match file.content_type.as_str() {
+            .filename(&filename);
+        match content_type.as_str() {
             "video/mp4" => Ok(DownloadOkResponse::MP4(attachment)),
             "video/mpeg" => Ok(DownloadOkResponse::Mpeg(attachment)),
+            // Unlikely path if 'upload' implementation is correct
             _ => Err(DownloadErrorResponse::NotFound),
         }
     }
@@ -190,6 +195,12 @@ impl FilesApi {
             .data
             .file_name()
             .ok_or(UploadErrorResponse::InternalError)?;
+        // Checking if File already existed
+        let status = self.status.read().await;
+        if status.name.contains_key(filename) {
+            return Err(UploadErrorResponse::FileExists);
+        }
+        drop(status); // release lock to be nice to others
 
         // Checking if expected content_type
         let content_type = upload
@@ -203,6 +214,7 @@ impl FilesApi {
             error!(?err);
             UploadErrorResponse::InternalError
         })?;
+
         // Save file data to local storage
         let id = Uuid::new_v4();
         let created_at = now();
@@ -211,27 +223,31 @@ impl FilesApi {
             error!(?err);
             UploadErrorResponse::InternalError
         })?;
-
-        // When locking, the idea is to minimize the duration of operations
-        // to shorten the locking time
+        // Expensive locking to write
         let mut status = self.status.write().await;
-        // Checking if File already existed
+        /*
+            Here we check again if File already existed
+            Note that this checking is mandatory here even we've checked in the begining of this method
+            It's unlikeyly to happen but still has a chance becaue that's the nature of multi-thread
+        */
         if status.name.contains_key(&filename) {
             return Err(UploadErrorResponse::FileExists);
         }
         // Create mapping between filename and uuid
         status.name.insert(filename.clone(), id);
         // Create mapping between uuid and file
-        let file = File {
-            filename,
-            content_type,
-            data,
-            created_at,
-        };
-        status.files.insert(id, file);
+        status.files.insert(
+            id,
+            File {
+                filename,
+                content_type,
+                data,
+                created_at,
+            },
+        );
         drop(status); // release lock
 
-        Ok(UploadOkResponse::Success(format!("./mypath/{}", id)))
+        Ok(UploadOkResponse::Success(format!("./storage/{}", id)))
     }
 
     /// List uploaded files
