@@ -1,7 +1,13 @@
 use poem::{listener::TcpListener, Result, Route, Server};
 use poem_openapi::OpenApiService;
 
+use poem::{middleware::TowerLayerCompatExt, EndpointExt};
+use tower::limit::RateLimitLayer;
 mod api;
+
+const HOST: &str = "0.0.0.0:8080";
+const VERSION: &str = "v1";
+const HTTP: &str = "http://";
 
 #[tokio::main]
 async fn main() -> Result<(), std::io::Error> {
@@ -25,13 +31,18 @@ async fn main() -> Result<(), std::io::Error> {
         "Video Storage Server API",
         "1.0",
     )
-    .server("http://0.0.0.0:8080/v1");
+    .server(HTTP.to_string() + HOST + "/" + VERSION); // http://0.0.0.0:8080/v1
+                                                      // Helper routes. can remove for production release
     let ui = api_service.swagger_ui();
     let spec = api_service.spec_endpoint();
     let spec_yaml = api_service.spec_endpoint_yaml();
 
+    // Rate limit up to 1000 req in 30 seconds
+    let api_service =
+        api_service.with(RateLimitLayer::new(1000, std::time::Duration::from_secs(30)).compat());
+
     // Start listening
-    Server::new(TcpListener::bind("0.0.0.0:8080"))
+    Server::new(TcpListener::bind(HOST))
         .run(
             Route::new()
                 .nest("/v1", api_service)

@@ -1,3 +1,5 @@
+use poem::Endpoint;
+use poem::EndpointExt;
 use poem_openapi::OpenApi;
 use poem_openapi::{
     param::Path,
@@ -10,6 +12,7 @@ use time::format_description::FormatItem;
 use time::macros::format_description;
 use tokio::sync::RwLock;
 use tracing::error;
+use tracing::info;
 use tracing::warn;
 use uuid::Uuid;
 
@@ -20,9 +23,11 @@ const MPEG: &str = "video/mpeg";
 enum DownloadOkResponse {
     /// OK
     #[oai(status = 200, content_type = "video/mp4")]
+    // Compiler error if replacing "video/mp4" with MP4
     MP4(Attachment<Vec<u8>>),
     /// OK
     #[oai(status = 200, content_type = "video/mpeg")]
+    // Compiler error if replacing "video/mpeg" with MPEG
     Mpeg(Attachment<Vec<u8>>),
 }
 
@@ -122,6 +127,11 @@ pub struct Resource {
     pub name: HashMap<String, uuid::Uuid>,
 }
 
+fn upload_middleware(ep: impl Endpoint) -> impl Endpoint {
+    // File Size up to 1G bytes
+    ep.with(poem::middleware::SizeLimit::new(1 * 1024 * 1024 * 1024))
+}
+
 #[OpenApi]
 impl FilesApi {
     /// Download a video file by fileid. The file name will be restored as it was when you uploaded it.
@@ -184,8 +194,9 @@ impl FilesApi {
     }
 
     /// Upload a video file
-    #[oai(path = "/files", method = "post")]
+    #[oai(path = "/files", method = "post", transform = "upload_middleware")]
     async fn upload(&self, upload: UploadPayload) -> Result<UploadOkResponse, UploadErrorResponse> {
+        info!("upload");
         // Checking if empty file name
         let filename = upload
             .data
