@@ -98,23 +98,24 @@ struct UploadPayload {
     data: Upload,
 }
 
-#[derive(Debug, Object, Clone)]
+#[derive(Default, Debug, Object, Clone)]
 pub struct File {
-    content_type: String,
-    name: String,
-    size: usize,
-    created_at: String,
+    pub content_type: String,
+    pub name: String,
+    pub size: usize,
+    pub created_at: String,
+    pub download_cnt: u64,
 }
 
 #[derive(Debug, Object)]
-struct UploadedFile {
-    fileid: String,
+pub struct UploadedFile {
+    pub fileid: String,
     /// filename
-    name: String,
+    pub name: String,
     /// file size(bytes)
-    size: usize,
+    pub size: usize,
     /// Time when the data was saved on the server side
-    created_at: String,
+    pub created_at: String,
 }
 
 #[derive(Default)]
@@ -147,29 +148,34 @@ impl FilesApi {
             DownloadErrorResponse::NotFound
         })?;
         let resource = self.rwlock.read().await;
-        let file = resource
+        let (filename, content_type) = resource
             .files
             .get(&id)
+            .map(|file| (file.name.clone(), file.content_type.clone()))
             .ok_or(DownloadErrorResponse::NotFound)?;
-        let filename = file.name.clone();
-        let content_type = file.content_type.clone();
-        drop(resource); // Drop here to gain performance
-                        // Read file from "./storage" directory
+        // Early release lock to gain little performance
+        drop(resource);
+        // Read file from "./storage" directory
         let read_path = std::path::Path::new("./storage").join(id.to_string());
         let data = tokio::fs::read(read_path).await.map_err(|err| {
             error!(?err);
             DownloadErrorResponse::InternalError
         })?;
-
         let attachment = Attachment::new(data)
             .attachment_type(AttachmentType::Attachment)
             .filename(&filename);
-        match content_type.as_str() {
+        let ret = match content_type.as_str() {
             MP4 => Ok(DownloadOkResponse::MP4(attachment)),
             MPEG => Ok(DownloadOkResponse::Mpeg(attachment)),
             // Unlikely path if 'upload' implementation is correct
-            _ => Err(DownloadErrorResponse::NotFound),
-        }
+            _ => Err(DownloadErrorResponse::InternalError),
+        };
+
+        // Download is ready so we +1 to download cnt
+        if let Some(file) = self.rwlock.write().await.files.get_mut(&id) {
+            file.download_cnt += 1;
+        };
+        ret
     }
 
     /// Delete a video file
@@ -251,6 +257,7 @@ impl FilesApi {
                 size: data.len(),
                 content_type,
                 created_at,
+                ..Default::default()
             },
         );
         drop(resource); // Release locked resource
@@ -289,5 +296,11 @@ impl FilesApi {
             .collect::<Vec<_>>();
 
         Json(vec)
+    }
+    /// List top 10 downloaded files
+    #[oai(path = "/files/top_10_download", method = "get")]
+    async fn top_10_downloads(&self) -> Json<Vec<UploadedFile>> {
+        let v = super::ext_feature::top_10_downloads(self).await;
+        Json(v)
     }
 }
