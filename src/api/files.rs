@@ -16,6 +16,7 @@ use tracing::info;
 use tracing::warn;
 use uuid::Uuid;
 
+const MAXIMUM_FILE_SIZE: usize = 1024 * 1024 * 1024; // 1G bytes
 const MP4: &str = "video/mp4";
 const MPEG: &str = "video/mpeg";
 
@@ -129,7 +130,7 @@ pub struct Resource {
 
 fn upload_middleware(ep: impl Endpoint) -> impl Endpoint {
     // File Size up to 1G bytes
-    ep.with(poem::middleware::SizeLimit::new(1 * 1024 * 1024 * 1024))
+    ep.with(poem::middleware::SizeLimit::new(MAXIMUM_FILE_SIZE))
 }
 
 #[OpenApi]
