@@ -101,8 +101,8 @@ struct UploadPayload {
 #[derive(Debug, Object, Clone)]
 pub struct File {
     content_type: String,
-    filename: String,
-    data: Vec<u8>,
+    name: String,
+    size: usize,
     created_at: String,
 }
 
@@ -122,7 +122,7 @@ pub struct FilesApi {
     pub rwlock: RwLock<Resource>,
 }
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct Resource {
     pub files: HashMap<uuid::Uuid, File>,
     pub name: HashMap<String, uuid::Uuid>,
@@ -151,7 +151,7 @@ impl FilesApi {
             .files
             .get(&id)
             .ok_or(DownloadErrorResponse::NotFound)?;
-        let filename = file.filename.clone();
+        let filename = file.name.clone();
         let content_type = file.content_type.clone();
         drop(resource); // Drop here to gain performance
                         // Read file from "./storage" directory
@@ -188,7 +188,7 @@ impl FilesApi {
             .remove(&id)
             .map(|file| {
                 // Because file was deleted, the coresspoding name is also gone
-                let _ = resource.name.remove(&file.filename);
+                let _ = resource.name.remove(&file.name);
                 DeleteOkResponse::Success
             })
             .ok_or(DeleteErrorResponse::NotFound)
@@ -227,7 +227,7 @@ impl FilesApi {
         let id = Uuid::new_v4();
         let created_at = now();
         let path = std::path::Path::new("./storage").join(id.to_string());
-        tokio::fs::write(path, data.clone()).await.map_err(|err| {
+        tokio::fs::write(path, &data).await.map_err(|err| {
             error!(?err);
             UploadErrorResponse::InternalError
         })?;
@@ -242,18 +242,18 @@ impl FilesApi {
             return Err(UploadErrorResponse::FileExists);
         }
         // Create mapping between filename and uuid
-        resource.name.insert(filename.clone(), id);
+        resource.name.insert(filename.to_string(), id);
         // Create mapping between uuid and file
         resource.files.insert(
             id,
             File {
-                filename,
+                name: filename,
+                size: data.len(),
                 content_type,
-                data,
                 created_at,
             },
         );
-        drop(resource); // release lock
+        drop(resource); // Release locked resource
 
         Ok(UploadOkResponse::Success(format!("./storage/{}", id)))
     }
@@ -262,15 +262,30 @@ impl FilesApi {
     #[oai(path = "/files", method = "get")]
     async fn list(&self) -> Json<Vec<UploadedFile>> {
         let resource = self.rwlock.read().await;
-        let vec = resource
-            .files
-            .iter()
-            .map(|(id, file)| UploadedFile {
-                fileid: id.to_string(),
-                name: file.filename.clone(),
-                size: file.data.len(),
-                created_at: file.created_at.clone(),
-            })
+        // I feel it's more firendly for concurrency query that we clone the data and immediatly
+        // release the lock rather than holding it until we finished constructing whole json returned value
+        let cloned_files = resource.files.clone();
+        drop(resource);
+
+        // Simple mapping
+        let vec = cloned_files
+            .into_iter()
+            .map(
+                |(
+                    id,
+                    File {
+                        name,
+                        created_at,
+                        size,
+                        ..
+                    },
+                )| UploadedFile {
+                    fileid: id.to_string(),
+                    name,
+                    size,
+                    created_at,
+                },
+            )
             .collect::<Vec<_>>();
 
         Json(vec)

@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 use poem::{listener::TcpListener, Result, Route, Server};
 use poem_openapi::OpenApiService;
 
@@ -8,6 +9,9 @@ mod api;
 const HOST: &str = "0.0.0.0:8080";
 const VERSION: &str = "v1";
 const HTTP: &str = "http://";
+
+const RATE_LIMITER_SIZE: u64 = 1000; // Maximum query
+const RATE_LIMITER_INTERVAL: u64 = 30; // second
 
 #[tokio::main]
 async fn main() -> Result<(), std::io::Error> {
@@ -22,24 +26,25 @@ async fn main() -> Result<(), std::io::Error> {
 
     // Openapi service
     let api_service = OpenApiService::new(
-        (
-            api::health::HealthApi,
-            api::files::FilesApi {
-                ..Default::default()
-            },
-        ),
+        (api::health::HealthApi, api::files::FilesApi::default()),
         "Video Storage Server API",
         "1.0",
     )
-    .server(HTTP.to_string() + HOST + "/" + VERSION); // http://0.0.0.0:8080/v1
-                                                      // Helper routes. can remove for production release
+    // Ex: http://0.0.0.0:8080/v1
+    .server(HTTP.to_string() + HOST + "/" + VERSION);
+    // Helper routes that can be removed for production release
     let ui = api_service.swagger_ui();
     let spec = api_service.spec_endpoint();
     let spec_yaml = api_service.spec_endpoint_yaml();
 
-    // Rate limit up to 1000 req in 30 seconds
-    let api_service =
-        api_service.with(RateLimitLayer::new(1000, std::time::Duration::from_secs(30)).compat());
+    // Rate limiter up to 1000 req in 30 seconds
+    let api_service = api_service.with(
+        RateLimitLayer::new(
+            RATE_LIMITER_SIZE,
+            std::time::Duration::from_secs(RATE_LIMITER_INTERVAL),
+        )
+        .compat(),
+    );
 
     // Start listening
     Server::new(TcpListener::bind(HOST))
