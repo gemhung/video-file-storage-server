@@ -12,7 +12,6 @@ use time::format_description::FormatItem;
 use time::macros::format_description;
 use tokio::sync::RwLock;
 use tracing::error;
-use tracing::info;
 use tracing::warn;
 use uuid::Uuid;
 
@@ -107,7 +106,7 @@ pub struct File {
     pub download_cnt: u64,
 }
 
-#[derive(Debug, Object)]
+#[derive(Clone, Debug, Object)]
 pub struct UploadedFile {
     pub fileid: String,
     /// filename
@@ -118,15 +117,27 @@ pub struct UploadedFile {
     pub created_at: String,
 }
 
-#[derive(Default)]
 pub struct FilesApi {
     pub rwlock: RwLock<Resource>,
 }
 
-#[derive(Clone, Default)]
+impl FilesApi {
+    pub async fn new() -> Self {
+        Self {
+            rwlock: RwLock::new(Resource {
+                files: HashMap::<uuid::Uuid, File>::new(),
+                name: HashMap::<String, uuid::Uuid>::new(),
+                storage: super::storage::Storage::new().await,
+            }),
+        }
+    }
+}
+
+#[derive(Clone)]
 pub struct Resource {
     pub files: HashMap<uuid::Uuid, File>,
     pub name: HashMap<String, uuid::Uuid>,
+    pub storage: super::storage::Storage,
 }
 
 fn upload_middleware(ep: impl Endpoint) -> impl Endpoint {
@@ -153,14 +164,11 @@ impl FilesApi {
             .get(&id)
             .map(|file| (file.name.clone(), file.content_type.clone()))
             .ok_or(DownloadErrorResponse::NotFound)?;
-        // Early release lock to gain little performance
-        drop(resource);
-        // Read file from "./storage" directory
-        let read_path = std::path::Path::new("./storage").join(id.to_string());
-        let data = tokio::fs::read(read_path).await.map_err(|err| {
-            error!(?err);
-            DownloadErrorResponse::InternalError
-        })?;
+        // Retrieve file from storage
+        let Some(data) = resource.storage.retrieve(&id).await else {
+            return Err(DownloadErrorResponse::NotFound);
+        };
+        // Construct return attachment
         let attachment = Attachment::new(data)
             .attachment_type(AttachmentType::Attachment)
             .filename(&filename);
@@ -170,6 +178,7 @@ impl FilesApi {
             // Unlikely path if 'upload' implementation is correct
             _ => Err(DownloadErrorResponse::InternalError),
         };
+        drop(resource);
 
         // Download is ready so we +1 to download cnt
         if let Some(file) = self.rwlock.write().await.files.get_mut(&id) {
@@ -197,24 +206,25 @@ impl FilesApi {
                 let _ = resource.name.remove(&file.name);
                 DeleteOkResponse::Success
             })
-            .ok_or(DeleteErrorResponse::NotFound)
+            .ok_or(DeleteErrorResponse::NotFound)?;
+
+        resource.storage.delete(&id).await;
+        Ok(DeleteOkResponse::Success)
     }
 
     /// Upload a video file
     #[oai(path = "/files", method = "post", transform = "upload_middleware")]
     async fn upload(&self, upload: UploadPayload) -> Result<UploadOkResponse, UploadErrorResponse> {
-        info!("upload");
         // Checking if empty file name
         let filename = upload
             .data
             .file_name()
             .ok_or(UploadErrorResponse::InternalError)?;
         // Checking if File already existed
-        let resource = self.rwlock.read().await;
+        let mut resource = self.rwlock.write().await;
         if resource.name.contains_key(filename) {
             return Err(UploadErrorResponse::FileExists);
         }
-        drop(resource); // Release lock to be nice to others
 
         // Checking if expected content_type
         let content_type = upload
@@ -232,13 +242,8 @@ impl FilesApi {
         // Save file data to local storage
         let id = Uuid::new_v4();
         let created_at = now();
-        let path = std::path::Path::new("./storage").join(id.to_string());
-        tokio::fs::write(path, &data).await.map_err(|err| {
-            error!(?err);
-            UploadErrorResponse::InternalError
-        })?;
+        resource.storage.store(&id, &data).await;
         // Expensive locking to write
-        let mut resource = self.rwlock.write().await;
         /*
             Here we check again if File already existed
             Note that this checking is mandatory here even we've checked in the begining of this method
@@ -260,7 +265,6 @@ impl FilesApi {
                 ..Default::default()
             },
         );
-        drop(resource); // Release locked resource
 
         Ok(UploadOkResponse::Success(format!("./storage/{}", id)))
     }

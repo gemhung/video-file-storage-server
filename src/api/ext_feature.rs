@@ -3,10 +3,10 @@ use super::files::UploadedFile;
 use std::collections::BinaryHeap;
 
 pub async fn top_10_downloads(fileapi: &super::files::FilesApi) -> Vec<UploadedFile> {
-    //  Method 1: min-heap
     let mut pq = BinaryHeap::new();
     let resource = fileapi.rwlock.read().await;
 
+    //  Method 1: min-heap
     // Top k frequent items algo
     for (id, file) in resource.files.iter() {
         pq.push((std::cmp::Reverse(file.download_cnt), *id));
@@ -14,6 +14,8 @@ pub async fn top_10_downloads(fileapi: &super::files::FilesApi) -> Vec<UploadedF
             pq.pop();
         }
     }
+    // Method 2 : quick select
+    // Todo
 
     // Simple mapping
     let mut ret = vec![];
@@ -34,9 +36,6 @@ pub async fn top_10_downloads(fileapi: &super::files::FilesApi) -> Vec<UploadedF
             ret.push(r);
         }
     }
-
-    // Method 2 : quick select
-    // Todo
 
     ret
 }

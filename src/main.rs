@@ -1,9 +1,9 @@
 #![forbid(unsafe_code)]
 use poem::{listener::TcpListener, Result, Route, Server};
-use poem_openapi::OpenApiService;
-
 use poem::{middleware::TowerLayerCompatExt, EndpointExt};
+use poem_openapi::OpenApiService;
 use tower::limit::RateLimitLayer;
+
 mod api;
 
 const HOST: &str = "0.0.0.0:8080";
@@ -21,12 +21,13 @@ async fn main() -> Result<(), std::io::Error> {
         .with_file(true)
         .init();
 
-    // It's where we save the upload file
-    tokio::fs::create_dir_all("./storage").await?;
+    // It's where we save the uploaded files
+    //tokio::fs::create_dir_all("./storage").await?;
+    api::storage::Storage::new().await;
 
     // Openapi service
     let api_service = OpenApiService::new(
-        (api::health::HealthApi, api::files::FilesApi::default()),
+        (api::health::HealthApi, api::files::FilesApi::new().await),
         "Video Storage Server API",
         "1.0",
     )
