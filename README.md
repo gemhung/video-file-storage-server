@@ -27,6 +27,15 @@ poem, poem-openapi, tokio, tracing, storage, file processing, http, uuid
   * It's also a good chance to showcase how I pick up a new framework and how to get familiar with it
   * The implementation focuses more on rust coding to make it neat and clean
 
+# Storage
+  * For now, we store uploaded files into local hard disk. In reality, they should be stored on cloud storage such as aws s3
+  * Under `./storage` dir, it created 10 buckets dir to simulate balancing workload
+  * In reality, some bucket maybe gone accidently and stored files will be gone, too
+  * That's where `consisten hashing` comes to the picture
+  * For now, I implemented the storage class with basic consisten hashing which didn't have rebalance function
+  * Though my implementation didn't have rebalance function, it still use binary search to get the index where data was stored
+  * For more info about `consisten hashing`, see [https://en.wikipedia.org/wiki/Consistent_hashing]
+
 # Resource
   * We use `rwlock` to protect resource data for now. The other way is to use `mpsc` channel
   * `Rwlock` has a better fine grained access but also intruduce more complexity and easier to have deadlock
@@ -49,20 +58,24 @@ poem, poem-openapi, tokio, tracing, storage, file processing, http, uuid
   - The generated openapi spec [http://0.0.0.0:8080/spec] or [http://0.0.0.0:8080/spec_yaml] for file
 
 # Todo
-### X-Api-Key
-  * It's common to have x-api-key authentication
-### Meta data
-  * For scalability, the file meta data can use `redis` to save data rather than holding it in memory
-### Recovery
-  * Because application may relaunch, we should recover meta data
-### Cache
-  * Maybe it's nice that we cache files data in memory for the top 10 downloaded files
-### Rate limiter
-  * For now, the rate limiter running in each task is independent. If we'd like to have an universal rate-limiter for all tasks running. We might have to implement it in `redis` (See [https://developer.redis.com/develop/dotnet/aspnetcore/rate-limiting/sliding-window/])
-### Magic number
-  * Parameterize magic numbers which can be found from rate-limiter, maximum file size upload and host address/port
-### Test
-  * Missing a lot of testings for now
+  * Storage
+    - Add rebalance function for my `consisten hashing` storage
+  * X-Api-Key
+    - It's common to have x-api-key authentication
+  * Meta data
+    - For scalability, the file meta data can use `redis` to save data rather than holding it in memory
+  * Recovery
+    - Because application may relaunch, we should recover meta data
+  *  Cache
+    - Maybe it's nice that we cache files data in memory for the top 10 downloaded files
+  * Rate limiter
+    - For now, the rate limiter running in each task is independent. If we'd like to have an universal rate-limiter for all tasks running. We might have to implement it in `redis` (See [https://developer.redis.com/develop/dotnet/aspnetcore/rate-limiting/sliding-window/])
+  * Magic number
+    - Parameterize magic numbers which can be found from rate-limiter, maximum file size upload and host address/port
+  * Test
+    - Missing a lot of testings for now
+  * Error handling
+    - It's nice to have a more detailed, well-defined customized error class
   
 
 # Challenge Statement
