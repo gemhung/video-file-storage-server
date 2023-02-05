@@ -31,9 +31,9 @@ poem, poem-openapi, tokio, tracing, storage, file processing, http, uuid
   * For now, we store uploaded files into local hard disk. In reality, they should be stored on cloud storage such as aws s3
   * Under `./storage` dir, it created 10 buckets dir to simulate balancing workload
   * In reality, some bucket maybe gone accidently and stored files will be gone, too
-  * That's where `consisten hashing` comes to the picture
-  * For now, I implemented the storage class with basic consisten hashing which didn't have rebalance function
-  * Though my implementation didn't have rebalance function, it still use binary search to get the index where data was stored
+  * To prevent from the accident above, we can duplicate uploaded file to the next 3 buckes
+  * I implemented the storage class with basic consisten hashing because it's useful to deal with accidents above
+  * For now, my implementation didn't have rebalance function yet, but it uses binary search to get the index where data was stored
   * For more info about `consisten hashing`, see [https://en.wikipedia.org/wiki/Consistent_hashing]
 
 # Resource
