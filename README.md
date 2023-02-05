@@ -1,3 +1,70 @@
+<h1 align="center">Restful Video Storage Server</h1>
+
+<div align="center">
+  <!-- CI -->
+  <img src="https://github.com/cityos-dev/Gembright-Stone-Hung/actions/workflows/action.yaml/badge.svg" />
+  <img src="https://github.com/cityos-dev/Gembright-Stone-Hung/actions/workflows/clippy.yaml/badge.svg" />
+  <a href="https://github.com/rust-secure-code/safety-dance/">
+    <img src="https://img.shields.io/badge/unsafe-forbidden-success.svg?style=flat-square"
+      alt="Unsafe Rust forbidden" />
+  </a>
+  <a href="https://blog.rust-lang.org/2022/11/03/Rust-1.65.0.html">
+    <img src="https://img.shields.io/badge/rustc-1.65.0+-ab6000.svg"
+      alt="rustc 1.65.0+" />
+  </a>
+</div>
+
+# keywords
+```
+poem, poem-openapi, tokio, tracing, storage, file processing, http, uuid
+```
+# Swagger UI
+  * Check out [http://0.0.0.0:8080] 
+
+# Web framework (Why poem ?) 
+  * There are many excellent web frameworks such as `actix-web`, `axum` or `rocket` but might be way too powerful to quickly get familiar with 
+  * The simple reason to pick up `poem` is because I feel like it has a good support to `openapi` and can help me build the solution quickly
+  * It's also a good chance to showcase how I pick up a new framework and how to get familiar with it
+  * The implementation focuses more on rust coding to make it neat and clean
+
+# Resource
+  * We use `rwlock` to protect resource data for now. The other way is to use `mpsc` channel
+  * `Rwlock` has a better fine grained access but also intruduce more complexity and easier to have deadlock
+
+# Uuid
+  * For security reason, I feel like using uuid as file name when saving the file and create a separate mapping in separated meta data
+
+# Rate-limiter
+  * I feel like it's common to have rate-limiter to avoid from too many request
+  * The soluition uses a middle to support rate-limiter for `1000 queries` in `30 seconds` for now
+
+# File size limit
+  * I feel like it's common to limit the file size for uploading a file
+  * The solution limits file size up to `1GB` for now
+
+# Ext-solutions
+  - Top 10 downloaded files
+    * I feel like it's common for users to know what the top 10 downloaded files are
+    * Take a look at `ext_feature.rs` for `fn top_10_downloads(...)` 
+  - The generated openapi spec [http://0.0.0.0:8080/spec] or [http://0.0.0.0:8080/spec_yaml] for file
+
+# Todo
+### X-Api-Key
+  * It's common to have x-api-key authentication
+### Meta data
+  * For scalability, the file meta data can use `redis` to save data rather than holding it in memory
+### Recovery
+  * Because application may relaunch, we should recover meta data
+### Cache
+  * Maybe it's nice that we cache files data in memory for the top 10 downloaded files
+### Rate limiter
+  * For now, the rate limiter running in each task is independent. If we'd like to have an universal rate-limiter for all tasks running. We might have to implement it in `redis` (See [https://developer.redis.com/develop/dotnet/aspnetcore/rate-limiting/sliding-window/])
+### Magic number
+  * Parameterize magic numbers which can be found from rate-limiter, maximum file size upload and host address/port
+### Test
+  * Missing a lot of testings for now
+  
+
 # Challenge Statement
 
 This challenge is about creating a simple video storage server with REST APIs
@@ -35,3 +102,4 @@ See the [Bonus point and extensions](#bonus-points-and-extensions) section.
 *Note*
 
 If you add or change APIs, include its OpenAPI document. However, please note that your server may be accessed by external clients in accordance with the given OpenAPI document and automated tests will hit the endpoints as described in [api.yaml](./api.yaml), therefore any change in the base path could result in 404 or false negative.
+
