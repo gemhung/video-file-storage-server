@@ -16,7 +16,7 @@
 
 # keywords
 ```
-poem, poem-openapi, tokio, tracing, storage, file processing, http, uuid
+poem, openapi, tokio, tracing, storage, consisten hashing, file processing, http, uuid, restful api
 ```
 # Swagger UI
   * Check out [http://0.0.0.0:8080] 
@@ -33,23 +33,23 @@ poem, poem-openapi, tokio, tracing, storage, file processing, http, uuid
   * In reality, some bucket maybe gone accidently and stored files will be gone, too
   * To prevent from the accident above, we can duplicate uploaded file to the next 3 buckes
   * I implemented the storage class with basic consisten hashing because it's useful to deal with accidents above
-  * For now, my implementation didn't have rebalance function yet, but it uses binary search to get the index where data was stored
+  * For now, my implementation didn't have rebalance function yet but it uses binary search to get the index where data was stored
   * For more info about `consisten hashing`, see [https://en.wikipedia.org/wiki/Consistent_hashing]
 
 # Resource
   * We use `rwlock` to protect resource data for now. The other way is to use `mpsc` channel
-  * `Rwlock` has a better fine grained access but also intruduce more complexity and easier to have deadlock
+  * `Rwlock` has a better fine grained access but also introduce more complexity and it's easier to have deadlock
 
 # Uuid
-  * For security reason, I feel like using uuid as file name when saving the file and create a separate mapping in separated meta data
+  * For security reason, I feel like uuid is a good choice as our stored file name and then create a separate mapping in separated meta data
 
 # Rate-limiter
   * I feel like it's common to have rate-limiter to avoid from too many request
-  * The soluition uses a middle to support rate-limiter for `1000 queries` in `30 seconds` for now
+  * For now, the soluition uses a middleware to support rate-limiter for `1000 queries` in `30 seconds`
 
 # File size limit
   * I feel like it's common to limit the file size for uploading a file
-  * The solution limits file size up to `1GB` for now
+  * For now, the solution limits file size up to `1GB`
 
 # Ext-solutions
   - Top 10 downloaded files
@@ -64,6 +64,8 @@ poem, poem-openapi, tokio, tracing, storage, file processing, http, uuid
     - It's common to have x-api-key authentication
   * Meta data
     - For scalability, the file meta data can use `redis` to save data rather than holding it in memory
+  * Cache
+    - Is it good to cache the top 10 downloaded files in terms of performance ?
   * Recovery
     - Because application may relaunch, we should recover meta data
   *  Cache
@@ -73,11 +75,10 @@ poem, poem-openapi, tokio, tracing, storage, file processing, http, uuid
   * Magic number
     - Parameterize magic numbers which can be found from rate-limiter, maximum file size upload and host address/port
   * Test
-    - Missing a lot of testings for now
+    - Missing a lot of test cases for now
   * Error handling
     - It's nice to have a more detailed, well-defined customized error class
   
-
 # Challenge Statement
 
 This challenge is about creating a simple video storage server with REST APIs
