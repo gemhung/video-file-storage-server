@@ -1,0 +1,114 @@
+openapi: '3.0.2'
+info:
+  title: Video Storage Server API
+  version: '1.0'
+servers:
+  - url: http://localhost:8080/v1
+paths:
+  /health:
+    get:
+      description: Return the health of the service as HTTP 200 status. Useful to check if everything is configured correctly.
+      responses:
+        '200':
+          description: OK
+  /files/{fileid}:
+    get:
+      description: Download a video file by fileid. The file name will be restored as it was when you uploaded it.
+      parameters:
+        - in: path
+          name: fileid
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          headers:
+            Content-Disposition:
+              schema:
+                type: string
+          content:
+            video/mp4:  # foo.mp4, foo.mpg4
+              schema: 
+                type: string
+                format: binary
+            video/mpeg: # bar.mpg bar.mpeg
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: File not found
+    delete:
+      description: Delete a video file
+      parameters:
+        - in: path
+          name: fileid
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: File was successfully removed
+        '404':
+          description: File not found
+  /files:
+    post:
+      description: Upload a video file
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                # Content-Disposition: form-data; name='data'; filename='FILENAME'
+                data:
+                  # Content-Type for string/binary is `video/mp4` or `video/mpeg`
+                  type: string
+                  format: binary
+      responses:
+        '201':
+          description: File uploaded
+          headers:
+            Location:
+              schema:
+                type: string
+              description: "Created file location"
+        '400':
+          description: Bad request
+        '409':
+          description: File exists
+        '415':
+          description: Unsupported Media Type
+    get:
+      description: List uploaded files
+      responses:
+        '200':
+          description: File list
+          content:
+            application/json:
+              schema: 
+                type: array
+                items:
+                  $ref: '#/components/schemas/UploadedFile'
+
+components:
+  schemas:
+    UploadedFile:
+      required:
+        - fileid
+        - name
+        - size
+        - created_at
+      properties:
+        fileid:
+          type: string
+        name:
+          description: filename
+          type: string
+        size:
+          description: file size (bytes)
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+          description: Time when the data was saved on the server side.
