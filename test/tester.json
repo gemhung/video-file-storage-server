@@ -1,0 +1,2556 @@
+{
+	"info": {
+		"_postman_id": "9f7f3bd4-8809-4f30-934f-0382e6eef083",
+		"name": "Video Storage Server API Tester",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Test",
+			"item": [
+				{
+					"name": "Healthcheck",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"healthcheck\", () => {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/health",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"health"
+							]
+						},
+						"description": "Check service health"
+					},
+					"response": [
+						{
+							"name": "Health",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/health",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"health"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": ""
+						}
+					]
+				},
+				{
+					"name": "Remove all files (setup)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"remove all files\", () => {",
+									"    const responseJson = pm.response.json();",
+									"    ",
+									"    responseJson.forEach( file => {",
+									"        const fileid = file.fileid;",
+									"",
+									"        pm.sendRequest({",
+									"            url: pm.collectionVariables.get(\"baseUrl\")+\"/files/\"+fileid, ",
+									"            method: 'DELETE'",
+									"        });",
+									"    });",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/files",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"files"
+							]
+						},
+						"description": "List uploaded files"
+					},
+					"response": [
+						{
+							"name": "File list",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/files",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"files"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "[\n {\n  \"fileid\": \"ut quis fugiat ullamco\",\n  \"name\": \"Lorem\",\n  \"size\": -48069011,\n  \"created_at\": \"1953-04-11T05:34:31.717Z\"\n },\n {\n  \"fileid\": \"dolor est\",\n  \"name\": \"ullamco occaecat Lorem id\",\n  \"size\": -9049352,\n  \"created_at\": \"2018-02-20T07:55:44.128Z\"\n }\n]"
+						}
+					]
+				},
+				{
+					"name": "Delete nonexistent file (must be 404)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"response check\", () => {",
+									"    pm.response.to.have.status(404);",
+									"});",
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.collectionVariables.set(\"file_id\",Math.random().toString(32).substring(2))"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/files/:fileid",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"files",
+								":fileid"
+							],
+							"variable": [
+								{
+									"key": "fileid",
+									"value": "{{file_id}}",
+									"description": "(Required) "
+								}
+							]
+						},
+						"description": "Delete a video file"
+					},
+					"response": [
+						{
+							"name": "File was successfully removed",
+							"originalRequest": {
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/files/:fileid",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"files",
+										":fileid"
+									],
+									"variable": [
+										{
+											"key": "fileid",
+											"value": "proident aliquip lab",
+											"description": "(Required) "
+										}
+									]
+								}
+							},
+							"status": "No Content",
+							"code": 204,
+							"_postman_previewlanguage": "text",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "text/plain"
+								}
+							],
+							"cookie": [],
+							"body": ""
+						},
+						{
+							"name": "File not found",
+							"originalRequest": {
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/files/:fileid",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"files",
+										":fileid"
+									],
+									"variable": [
+										{
+											"key": "fileid",
+											"value": "proident aliquip lab",
+											"description": "(Required) "
+										}
+									]
+								}
+							},
+							"status": "Not Found",
+							"code": 404,
+							"_postman_previewlanguage": "text",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "text/plain"
+								}
+							],
+							"cookie": [],
+							"body": ""
+						},
+						{
+							"name": "Internal Server Error",
+							"originalRequest": {
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/files/:fileid",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"files",
+										":fileid"
+									],
+									"variable": [
+										{
+											"key": "fileid",
+											"value": "proident aliquip lab",
+											"description": "(Required) "
+										}
+									]
+								}
+							},
+							"status": "Internal Server Error",
+							"code": 500,
+							"_postman_previewlanguage": "text",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "text/plain"
+								}
+							],
+							"cookie": [],
+							"body": ""
+						}
+					]
+				},
+				{
+					"name": "Retrieve the random file (must be 404)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"response check\", () => {",
+									"    pm.response.to.have.status(404);",
+									"});",
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.collectionVariables.set(\"file_id\",Math.random().toString(32).substring(2))"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/files/:fileid",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"files",
+								":fileid"
+							],
+							"variable": [
+								{
+									"key": "fileid",
+									"value": "{{file_id}}",
+									"description": "(Required) "
+								}
+							]
+						},
+						"description": "Download a video file by fileid"
+					},
+					"response": [
+						{
+							"name": "OK",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/files/:fileid",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"files",
+										":fileid"
+									],
+									"variable": [
+										{
+											"key": "fileid",
+											"value": "proident aliquip lab",
+											"description": "(Required) "
+										}
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "text",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/octet-stream"
+								}
+							],
+							"cookie": [],
+							"body": "proident aliquip lab"
+						},
+						{
+							"name": "File not found",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/files/:fileid",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"files",
+										":fileid"
+									],
+									"variable": [
+										{
+											"key": "fileid",
+											"value": "proident aliquip lab",
+											"description": "(Required) "
+										}
+									]
+								}
+							},
+							"status": "Not Found",
+							"code": 404,
+							"_postman_previewlanguage": "text",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "text/plain"
+								}
+							],
+							"cookie": [],
+							"body": ""
+						},
+						{
+							"name": "Internal Server error",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/files/:fileid",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"files",
+										":fileid"
+									],
+									"variable": [
+										{
+											"key": "fileid",
+											"value": "proident aliquip lab",
+											"description": "(Required) "
+										}
+									]
+								}
+							},
+							"status": "Internal Server Error",
+							"code": 500,
+							"_postman_previewlanguage": "text",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "text/plain"
+								}
+							],
+							"cookie": [],
+							"body": ""
+						}
+					]
+				},
+				{
+					"name": "Check file list (length must be 0)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"files list length check\", () => {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.length).to.eql(0);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/files",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"files"
+							]
+						},
+						"description": "List uploaded files"
+					},
+					"response": [
+						{
+							"name": "File list",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/files",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"files"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "[\n {\n  \"fileid\": \"ut quis fugiat ullamco\",\n  \"name\": \"Lorem\",\n  \"size\": -48069011,\n  \"created_at\": \"1953-04-11T05:34:31.717Z\"\n },\n {\n  \"fileid\": \"dolor est\",\n  \"name\": \"ullamco occaecat Lorem id\",\n  \"size\": -9049352,\n  \"created_at\": \"2018-02-20T07:55:44.128Z\"\n }\n]"
+						}
+					]
+				},
+				{
+					"name": "Add a new file",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"response check\", () => {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test(\"Location header is present\", () => {",
+									"    pm.response.to.have.header(\"Location\");",
+									"    var loc = pm.response.headers.get('Location').match(\".+/(.+?)([\\?#;].*)?$\")[1];",
+									"    pm.collectionVariables.set(\"file_id\", loc);",
+									"});",
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.collectionVariables.set(\"upload_file_path\",\"./test/post_1/sample.mp4\")"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "multipart/form-data"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "data",
+									"type": "file",
+									"src": "{{upload_file_path}}"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{baseUrl}}/files",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"files"
+							]
+						},
+						"description": "Upload a video file"
+					},
+					"response": [
+						{
+							"name": "File uploaded",
+							"originalRequest": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "formdata",
+									"formdata": [
+										{
+											"key": "data",
+											"type": "file",
+											"src": []
+										}
+									]
+								},
+								"url": {
+									"raw": "{{baseUrl}}/files",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"files"
+									]
+								}
+							},
+							"status": "Created",
+							"code": 201,
+							"_postman_previewlanguage": "text",
+							"header": [
+								{
+									"key": "Location",
+									"value": "proident aliquip lab",
+									"description": "Created file location"
+								},
+								{
+									"key": "Content-Type",
+									"value": "text/plain"
+								}
+							],
+							"cookie": [],
+							"body": ""
+						},
+						{
+							"name": "File exists",
+							"originalRequest": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "formdata",
+									"formdata": [
+										{
+											"key": "data",
+											"type": "file",
+											"src": []
+										}
+									]
+								},
+								"url": {
+									"raw": "{{baseUrl}}/files",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"files"
+									]
+								}
+							},
+							"status": "Conflict",
+							"code": 409,
+							"_postman_previewlanguage": "text",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "text/plain"
+								}
+							],
+							"cookie": [],
+							"body": ""
+						},
+						{
+							"name": "Internal Server Error",
+							"originalRequest": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "formdata",
+									"formdata": [
+										{
+											"key": "data",
+											"type": "file",
+											"src": []
+										}
+									]
+								},
+								"url": {
+									"raw": "{{baseUrl}}/files",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"files"
+									]
+								}
+							},
+							"status": "Internal Server Error",
+							"code": 500,
+							"_postman_previewlanguage": "text",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "text/plain"
+								}
+							],
+							"cookie": [],
+							"body": ""
+						}
+					]
+				},
+				{
+					"name": "Retrieve the file",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"response check\", () => {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"content type check\", () => {",
+									"    pm.expect(pm.response.headers.get('Content-Type')).to.eql('video/mp4');",
+									"});",
+									"",
+									"pm.test(\"Content size check\", () => {",
+									"    console.log(pm.response.responseSize);",
+									"    pm.expect(pm.response.responseSize).to.eql(Number(pm.collectionVariables.get(\"upload_file_size_1\")));",
+									"});",
+									"",
+									"pm.test(\"file name check\", () => {",
+									"    pm.response.to.have.header(\"Content-Disposition\");",
+									"    const file_header = pm.response.headers.get('Content-Disposition');",
+									"    const headers = file_header.split(\";\");",
+									"    console.log(headers);",
+									"    var filename;",
+									"",
+									"    headers.forEach(element => {",
+									"        const pair = element.split(\"=\");",
+									"        if (pair[0].indexOf(\"filename\")>=0) {",
+									"            filename = pair[1];",
+									"        }",
+									"    });",
+									"",
+									"    console.log(filename);",
+									"    const file = pm.collectionVariables.get('upload_file_path').match(\".+/(.+?)([\\?#;].*)?$\")[1];",
+									"    const basefile = file.split('/').pop();",
+									"    const index = filename.indexOf(basefile);",
+									"    pm.expect(index).to.gte(0);    ",
+									"",
+									"",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/files/:fileid",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"files",
+								":fileid"
+							],
+							"variable": [
+								{
+									"key": "fileid",
+									"value": "{{file_id}}",
+									"description": "(Required) "
+								}
+							]
+						},
+						"description": "Download a video file by fileid"
+					},
+					"response": [
+						{
+							"name": "OK",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/files/:fileid",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"files",
+										":fileid"
+									],
+									"variable": [
+										{
+											"key": "fileid",
+											"value": "proident aliquip lab",
+											"description": "(Required) "
+										}
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "text",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/octet-stream"
+								}
+							],
+							"cookie": [],
+							"body": "proident aliquip lab"
+						},
+						{
+							"name": "File not found",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/files/:fileid",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"files",
+										":fileid"
+									],
+									"variable": [
+										{
+											"key": "fileid",
+											"value": "proident aliquip lab",
+											"description": "(Required) "
+										}
+									]
+								}
+							},
+							"status": "Not Found",
+							"code": 404,
+							"_postman_previewlanguage": "text",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "text/plain"
+								}
+							],
+							"cookie": [],
+							"body": ""
+						},
+						{
+							"name": "Internal Server error",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/files/:fileid",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"files",
+										":fileid"
+									],
+									"variable": [
+										{
+											"key": "fileid",
+											"value": "proident aliquip lab",
+											"description": "(Required) "
+										}
+									]
+								}
+							},
+							"status": "Internal Server Error",
+							"code": 500,
+							"_postman_previewlanguage": "text",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "text/plain"
+								}
+							],
+							"cookie": [],
+							"body": ""
+						}
+					]
+				},
+				{
+					"name": "Check file list",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"files list length check\", () => {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.length).to.eql(1);",
+									"});",
+									"",
+									"pm.test(\"response JSON contents check\", () => {",
+									"    const responseJson = pm.response.json();",
+									"    const data = responseJson[responseJson.length - 1];",
+									"    const filename = pm.collectionVariables.get('upload_file_path').match(\".+/(.+?)([\\?#;].*)?$\")[1];",
+									"",
+									"    pm.expect(data.fileid).to.eql(pm.collectionVariables.get(\"file_id\"));",
+									"    pm.expect(data.size).to.eql(Number(pm.collectionVariables.get(\"upload_file_size_1\")));",
+									"    pm.expect(data.name).to.eql(filename);",
+									"});",
+									"",
+									"pm.test(\"Created date check\", () => {",
+									"    const responseJson = pm.response.json();",
+									"    const data = responseJson[responseJson.length - 1];",
+									"    const ts = Date.parse(data.created_at);",
+									"    const now = Date.now();",
+									"",
+									"    pm.expect(now-ts).to.lessThan(300000); //less than 5 min.",
+									"});",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/files",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"files"
+							]
+						},
+						"description": "List uploaded files"
+					},
+					"response": [
+						{
+							"name": "File list",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/files",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"files"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "[\n {\n  \"fileid\": \"ut quis fugiat ullamco\",\n  \"name\": \"Lorem\",\n  \"size\": -48069011,\n  \"created_at\": \"1953-04-11T05:34:31.717Z\"\n },\n {\n  \"fileid\": \"dolor est\",\n  \"name\": \"ullamco occaecat Lorem id\",\n  \"size\": -9049352,\n  \"created_at\": \"2018-02-20T07:55:44.128Z\"\n }\n]"
+						}
+					]
+				},
+				{
+					"name": "Delete the file",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"response check\", () => {",
+									"    pm.response.to.have.status(204);",
+									"});",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/files/:fileid",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"files",
+								":fileid"
+							],
+							"variable": [
+								{
+									"key": "fileid",
+									"value": "{{file_id}}",
+									"description": "(Required) "
+								}
+							]
+						},
+						"description": "Delete a video file"
+					},
+					"response": [
+						{
+							"name": "File was successfully removed",
+							"originalRequest": {
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/files/:fileid",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"files",
+										":fileid"
+									],
+									"variable": [
+										{
+											"key": "fileid",
+											"value": "proident aliquip lab",
+											"description": "(Required) "
+										}
+									]
+								}
+							},
+							"status": "No Content",
+							"code": 204,
+							"_postman_previewlanguage": "text",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "text/plain"
+								}
+							],
+							"cookie": [],
+							"body": ""
+						},
+						{
+							"name": "File not found",
+							"originalRequest": {
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/files/:fileid",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"files",
+										":fileid"
+									],
+									"variable": [
+										{
+											"key": "fileid",
+											"value": "proident aliquip lab",
+											"description": "(Required) "
+										}
+									]
+								}
+							},
+							"status": "Not Found",
+							"code": 404,
+							"_postman_previewlanguage": "text",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "text/plain"
+								}
+							],
+							"cookie": [],
+							"body": ""
+						},
+						{
+							"name": "Internal Server Error",
+							"originalRequest": {
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/files/:fileid",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"files",
+										":fileid"
+									],
+									"variable": [
+										{
+											"key": "fileid",
+											"value": "proident aliquip lab",
+											"description": "(Required) "
+										}
+									]
+								}
+							},
+							"status": "Internal Server Error",
+							"code": 500,
+							"_postman_previewlanguage": "text",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "text/plain"
+								}
+							],
+							"cookie": [],
+							"body": ""
+						}
+					]
+				},
+				{
+					"name": "Retrieve the file again (must be 404)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"response check\", () => {",
+									"    pm.response.to.have.status(404);",
+									"});",
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/files/:fileid",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"files",
+								":fileid"
+							],
+							"variable": [
+								{
+									"key": "fileid",
+									"value": "{{file_id}}",
+									"description": "(Required) "
+								}
+							]
+						},
+						"description": "Download a video file by fileid"
+					},
+					"response": [
+						{
+							"name": "OK",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/files/:fileid",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"files",
+										":fileid"
+									],
+									"variable": [
+										{
+											"key": "fileid",
+											"value": "proident aliquip lab",
+											"description": "(Required) "
+										}
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "text",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/octet-stream"
+								}
+							],
+							"cookie": [],
+							"body": "proident aliquip lab"
+						},
+						{
+							"name": "File not found",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/files/:fileid",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"files",
+										":fileid"
+									],
+									"variable": [
+										{
+											"key": "fileid",
+											"value": "proident aliquip lab",
+											"description": "(Required) "
+										}
+									]
+								}
+							},
+							"status": "Not Found",
+							"code": 404,
+							"_postman_previewlanguage": "text",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "text/plain"
+								}
+							],
+							"cookie": [],
+							"body": ""
+						},
+						{
+							"name": "Internal Server error",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/files/:fileid",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"files",
+										":fileid"
+									],
+									"variable": [
+										{
+											"key": "fileid",
+											"value": "proident aliquip lab",
+											"description": "(Required) "
+										}
+									]
+								}
+							},
+							"status": "Internal Server Error",
+							"code": 500,
+							"_postman_previewlanguage": "text",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "text/plain"
+								}
+							],
+							"cookie": [],
+							"body": ""
+						}
+					]
+				},
+				{
+					"name": "Check file list again",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"files list length check\", () => {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.length).to.eql(0);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/files",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"files"
+							]
+						},
+						"description": "List uploaded files"
+					},
+					"response": [
+						{
+							"name": "File list",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/files",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"files"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "[\n {\n  \"fileid\": \"ut quis fugiat ullamco\",\n  \"name\": \"Lorem\",\n  \"size\": -48069011,\n  \"created_at\": \"1953-04-11T05:34:31.717Z\"\n },\n {\n  \"fileid\": \"dolor est\",\n  \"name\": \"ullamco occaecat Lorem id\",\n  \"size\": -9049352,\n  \"created_at\": \"2018-02-20T07:55:44.128Z\"\n }\n]"
+						}
+					]
+				},
+				{
+					"name": "Add a new file again",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"response check\", () => {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test(\"Location header is present\", () => {",
+									"    pm.response.to.have.header(\"Location\");",
+									"    var loc = pm.response.headers.get('Location').match(\".+/(.+?)([\\?#;].*)?$\")[1];",
+									"    pm.collectionVariables.set(\"file_id\", loc);",
+									"});",
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.collectionVariables.set(\"upload_file_path\",\"./test/post_1/sample.mp4\")"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "multipart/form-data"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "data",
+									"type": "file",
+									"src": "{{upload_file_path}}"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{baseUrl}}/files",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"files"
+							]
+						},
+						"description": "Upload a video file"
+					},
+					"response": [
+						{
+							"name": "File uploaded",
+							"originalRequest": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "formdata",
+									"formdata": [
+										{
+											"key": "data",
+											"type": "file",
+											"src": []
+										}
+									]
+								},
+								"url": {
+									"raw": "{{baseUrl}}/files",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"files"
+									]
+								}
+							},
+							"status": "Created",
+							"code": 201,
+							"_postman_previewlanguage": "text",
+							"header": [
+								{
+									"key": "Location",
+									"value": "proident aliquip lab",
+									"description": "Created file location"
+								},
+								{
+									"key": "Content-Type",
+									"value": "text/plain"
+								}
+							],
+							"cookie": [],
+							"body": ""
+						},
+						{
+							"name": "File exists",
+							"originalRequest": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "formdata",
+									"formdata": [
+										{
+											"key": "data",
+											"type": "file",
+											"src": []
+										}
+									]
+								},
+								"url": {
+									"raw": "{{baseUrl}}/files",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"files"
+									]
+								}
+							},
+							"status": "Conflict",
+							"code": 409,
+							"_postman_previewlanguage": "text",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "text/plain"
+								}
+							],
+							"cookie": [],
+							"body": ""
+						},
+						{
+							"name": "Internal Server Error",
+							"originalRequest": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "formdata",
+									"formdata": [
+										{
+											"key": "data",
+											"type": "file",
+											"src": []
+										}
+									]
+								},
+								"url": {
+									"raw": "{{baseUrl}}/files",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"files"
+									]
+								}
+							},
+							"status": "Internal Server Error",
+							"code": 500,
+							"_postman_previewlanguage": "text",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "text/plain"
+								}
+							],
+							"cookie": [],
+							"body": ""
+						}
+					]
+				},
+				{
+					"name": "Add a different file but same name",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"response check\", () => {",
+									"    pm.expect(pm.response.code).to.be.oneOf([201,409]);",
+									"});",
+									"",
+									"pm.test(\"dealing with same file check\", () => {",
+									"    if (pm.response.code == 201){",
+									"        //if so, file id must be different from last one",
+									"        var loc = pm.response.headers.get('Location').match(\".+/(.+?)([\\?#;].*)?$\")[1];",
+									"        pm.expect(loc).not.to.eql(pm.collectionVariables.get(\"file_id\"));",
+									"        pm.collectionVariables.set(\"file_id\", loc);",
+									"    }else{",
+									"        //original file is not overwritten",
+									"        pm.sendRequest(pm.collectionVariables.get(\"baseUrl\")+\"/files/\"+pm.collectionVariables.get(\"file_id\"), function (err, response) {",
+									"            pm.expect(response.responseSize).to.eql(parseInt(pm.collectionVariables.get(\"upload_file_size_1\")));",
+									"        });",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.collectionVariables.set(\"upload_file_path\",\"./test/post_2/sample.mp4\")"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "multipart/form-data"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "data",
+									"type": "file",
+									"src": "{{upload_file_path}}"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{baseUrl}}/files",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"files"
+							]
+						},
+						"description": "Upload a video file"
+					},
+					"response": [
+						{
+							"name": "File uploaded",
+							"originalRequest": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "formdata",
+									"formdata": [
+										{
+											"key": "data",
+											"type": "file",
+											"src": []
+										}
+									]
+								},
+								"url": {
+									"raw": "{{baseUrl}}/files",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"files"
+									]
+								}
+							},
+							"status": "Created",
+							"code": 201,
+							"_postman_previewlanguage": "text",
+							"header": [
+								{
+									"key": "Location",
+									"value": "proident aliquip lab",
+									"description": "Created file location"
+								},
+								{
+									"key": "Content-Type",
+									"value": "text/plain"
+								}
+							],
+							"cookie": [],
+							"body": ""
+						},
+						{
+							"name": "File exists",
+							"originalRequest": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "formdata",
+									"formdata": [
+										{
+											"key": "data",
+											"type": "file",
+											"src": []
+										}
+									]
+								},
+								"url": {
+									"raw": "{{baseUrl}}/files",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"files"
+									]
+								}
+							},
+							"status": "Conflict",
+							"code": 409,
+							"_postman_previewlanguage": "text",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "text/plain"
+								}
+							],
+							"cookie": [],
+							"body": ""
+						},
+						{
+							"name": "Internal Server Error",
+							"originalRequest": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "formdata",
+									"formdata": [
+										{
+											"key": "data",
+											"type": "file",
+											"src": []
+										}
+									]
+								},
+								"url": {
+									"raw": "{{baseUrl}}/files",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"files"
+									]
+								}
+							},
+							"status": "Internal Server Error",
+							"code": 500,
+							"_postman_previewlanguage": "text",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "text/plain"
+								}
+							],
+							"cookie": [],
+							"body": ""
+						}
+					]
+				},
+				{
+					"name": "Delete nonexistent file again(must be 404)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"response check\", () => {",
+									"    pm.response.to.have.status(404);",
+									"});",
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.collectionVariables.set(\"file_id\",Math.random().toString(32).substring(2))"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/files/:fileid",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"files",
+								":fileid"
+							],
+							"variable": [
+								{
+									"key": "fileid",
+									"value": "{{file_id}}",
+									"description": "(Required) "
+								}
+							]
+						},
+						"description": "Delete a video file"
+					},
+					"response": [
+						{
+							"name": "File was successfully removed",
+							"originalRequest": {
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/files/:fileid",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"files",
+										":fileid"
+									],
+									"variable": [
+										{
+											"key": "fileid",
+											"value": "proident aliquip lab",
+											"description": "(Required) "
+										}
+									]
+								}
+							},
+							"status": "No Content",
+							"code": 204,
+							"_postman_previewlanguage": "text",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "text/plain"
+								}
+							],
+							"cookie": [],
+							"body": ""
+						},
+						{
+							"name": "File not found",
+							"originalRequest": {
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/files/:fileid",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"files",
+										":fileid"
+									],
+									"variable": [
+										{
+											"key": "fileid",
+											"value": "proident aliquip lab",
+											"description": "(Required) "
+										}
+									]
+								}
+							},
+							"status": "Not Found",
+							"code": 404,
+							"_postman_previewlanguage": "text",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "text/plain"
+								}
+							],
+							"cookie": [],
+							"body": ""
+						},
+						{
+							"name": "Internal Server Error",
+							"originalRequest": {
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/files/:fileid",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"files",
+										":fileid"
+									],
+									"variable": [
+										{
+											"key": "fileid",
+											"value": "proident aliquip lab",
+											"description": "(Required) "
+										}
+									]
+								}
+							},
+							"status": "Internal Server Error",
+							"code": 500,
+							"_postman_previewlanguage": "text",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "text/plain"
+								}
+							],
+							"cookie": [],
+							"body": ""
+						}
+					]
+				},
+				{
+					"name": "Add a different content-type file",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"response check\", () => {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test(\"Location header is present\", () => {",
+									"    pm.response.to.have.header(\"Location\");",
+									"    var loc = pm.response.headers.get('Location').match(\".+/(.+?)([\\?#;].*)?$\")[1];",
+									"    pm.collectionVariables.set(\"file_id\", loc);",
+									"});",
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.collectionVariables.set(\"upload_file_path\",\"./test/post_3/sample.mpg\")"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "multipart/form-data"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "data",
+									"type": "file",
+									"src": "{{upload_file_path}}"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{baseUrl}}/files",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"files"
+							]
+						},
+						"description": "Upload a video file"
+					},
+					"response": [
+						{
+							"name": "File uploaded",
+							"originalRequest": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "formdata",
+									"formdata": [
+										{
+											"key": "data",
+											"type": "file",
+											"src": []
+										}
+									]
+								},
+								"url": {
+									"raw": "{{baseUrl}}/files",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"files"
+									]
+								}
+							},
+							"status": "Created",
+							"code": 201,
+							"_postman_previewlanguage": "text",
+							"header": [
+								{
+									"key": "Location",
+									"value": "proident aliquip lab",
+									"description": "Created file location"
+								},
+								{
+									"key": "Content-Type",
+									"value": "text/plain"
+								}
+							],
+							"cookie": [],
+							"body": ""
+						},
+						{
+							"name": "File exists",
+							"originalRequest": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "formdata",
+									"formdata": [
+										{
+											"key": "data",
+											"type": "file",
+											"src": []
+										}
+									]
+								},
+								"url": {
+									"raw": "{{baseUrl}}/files",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"files"
+									]
+								}
+							},
+							"status": "Conflict",
+							"code": 409,
+							"_postman_previewlanguage": "text",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "text/plain"
+								}
+							],
+							"cookie": [],
+							"body": ""
+						},
+						{
+							"name": "Internal Server Error",
+							"originalRequest": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "formdata",
+									"formdata": [
+										{
+											"key": "data",
+											"type": "file",
+											"src": []
+										}
+									]
+								},
+								"url": {
+									"raw": "{{baseUrl}}/files",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"files"
+									]
+								}
+							},
+							"status": "Internal Server Error",
+							"code": 500,
+							"_postman_previewlanguage": "text",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "text/plain"
+								}
+							],
+							"cookie": [],
+							"body": ""
+						}
+					]
+				},
+				{
+					"name": "Retrieve the file and check the content type",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"response check\", () => {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"content type check\", () => {",
+									"    pm.expect(pm.response.headers.get('Content-Type')).to.eql('video/mpeg');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/files/:fileid",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"files",
+								":fileid"
+							],
+							"variable": [
+								{
+									"key": "fileid",
+									"value": "{{file_id}}",
+									"description": "(Required) "
+								}
+							]
+						},
+						"description": "Download a video file by fileid"
+					},
+					"response": [
+						{
+							"name": "OK",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/files/:fileid",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"files",
+										":fileid"
+									],
+									"variable": [
+										{
+											"key": "fileid",
+											"value": "proident aliquip lab",
+											"description": "(Required) "
+										}
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "text",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/octet-stream"
+								}
+							],
+							"cookie": [],
+							"body": "proident aliquip lab"
+						},
+						{
+							"name": "File not found",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/files/:fileid",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"files",
+										":fileid"
+									],
+									"variable": [
+										{
+											"key": "fileid",
+											"value": "proident aliquip lab",
+											"description": "(Required) "
+										}
+									]
+								}
+							},
+							"status": "Not Found",
+							"code": 404,
+							"_postman_previewlanguage": "text",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "text/plain"
+								}
+							],
+							"cookie": [],
+							"body": ""
+						},
+						{
+							"name": "Internal Server error",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/files/:fileid",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"files",
+										":fileid"
+									],
+									"variable": [
+										{
+											"key": "fileid",
+											"value": "proident aliquip lab",
+											"description": "(Required) "
+										}
+									]
+								}
+							},
+							"status": "Internal Server Error",
+							"code": 500,
+							"_postman_previewlanguage": "text",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "text/plain"
+								}
+							],
+							"cookie": [],
+							"body": ""
+						}
+					]
+				},
+				{
+					"name": "Add a wrong content-type file Copy",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"response check\", () => {",
+									"    pm.response.to.have.status(415);",
+									"});",
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.collectionVariables.set(\"upload_file_path\",\"./test/post_4/test.txt\")"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "multipart/form-data"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "data",
+									"type": "file",
+									"src": "{{upload_file_path}}"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{baseUrl}}/files",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"files"
+							]
+						},
+						"description": "Upload a video file"
+					},
+					"response": [
+						{
+							"name": "File uploaded",
+							"originalRequest": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "formdata",
+									"formdata": [
+										{
+											"key": "data",
+											"type": "file",
+											"src": []
+										}
+									]
+								},
+								"url": {
+									"raw": "{{baseUrl}}/files",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"files"
+									]
+								}
+							},
+							"status": "Created",
+							"code": 201,
+							"_postman_previewlanguage": "text",
+							"header": [
+								{
+									"key": "Location",
+									"value": "proident aliquip lab",
+									"description": "Created file location"
+								},
+								{
+									"key": "Content-Type",
+									"value": "text/plain"
+								}
+							],
+							"cookie": [],
+							"body": ""
+						},
+						{
+							"name": "File exists",
+							"originalRequest": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "formdata",
+									"formdata": [
+										{
+											"key": "data",
+											"type": "file",
+											"src": []
+										}
+									]
+								},
+								"url": {
+									"raw": "{{baseUrl}}/files",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"files"
+									]
+								}
+							},
+							"status": "Conflict",
+							"code": 409,
+							"_postman_previewlanguage": "text",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "text/plain"
+								}
+							],
+							"cookie": [],
+							"body": ""
+						},
+						{
+							"name": "Internal Server Error",
+							"originalRequest": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "formdata",
+									"formdata": [
+										{
+											"key": "data",
+											"type": "file",
+											"src": []
+										}
+									]
+								},
+								"url": {
+									"raw": "{{baseUrl}}/files",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"files"
+									]
+								}
+							},
+							"status": "Internal Server Error",
+							"code": 500,
+							"_postman_previewlanguage": "text",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "text/plain"
+								}
+							],
+							"cookie": [],
+							"body": ""
+						}
+					]
+				},
+				{
+					"name": "Add a new file (but doesn't contain any data)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"response check\", () => {",
+									"    pm.response.to.have.status(400);",
+									"});",
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "multipart/form-data"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": []
+						},
+						"url": {
+							"raw": "{{baseUrl}}/files",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"files"
+							]
+						},
+						"description": "Upload a video file"
+					},
+					"response": [
+						{
+							"name": "File uploaded",
+							"originalRequest": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "formdata",
+									"formdata": [
+										{
+											"key": "data",
+											"type": "file",
+											"src": []
+										}
+									]
+								},
+								"url": {
+									"raw": "{{baseUrl}}/files",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"files"
+									]
+								}
+							},
+							"status": "Created",
+							"code": 201,
+							"_postman_previewlanguage": "text",
+							"header": [
+								{
+									"key": "Location",
+									"value": "proident aliquip lab",
+									"description": "Created file location"
+								},
+								{
+									"key": "Content-Type",
+									"value": "text/plain"
+								}
+							],
+							"cookie": [],
+							"body": ""
+						},
+						{
+							"name": "File exists",
+							"originalRequest": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "formdata",
+									"formdata": [
+										{
+											"key": "data",
+											"type": "file",
+											"src": []
+										}
+									]
+								},
+								"url": {
+									"raw": "{{baseUrl}}/files",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"files"
+									]
+								}
+							},
+							"status": "Conflict",
+							"code": 409,
+							"_postman_previewlanguage": "text",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "text/plain"
+								}
+							],
+							"cookie": [],
+							"body": ""
+						},
+						{
+							"name": "Internal Server Error",
+							"originalRequest": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "formdata",
+									"formdata": [
+										{
+											"key": "data",
+											"type": "file",
+											"src": []
+										}
+									]
+								},
+								"url": {
+									"raw": "{{baseUrl}}/files",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"files"
+									]
+								}
+							},
+							"status": "Internal Server Error",
+							"code": 500,
+							"_postman_previewlanguage": "text",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "text/plain"
+								}
+							],
+							"cookie": [],
+							"body": ""
+						}
+					]
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://0.0.0.0:8080/v1"
+		},
+		{
+			"key": "file_id",
+			"value": ""
+		},
+		{
+			"key": "upload_file_path",
+			"value": ""
+		},
+		{
+			"key": "upload_file_size_1",
+			"value": "2848208"
+		},
+		{
+			"key": "upload_file_size_2",
+			"value": "11815175"
+		}
+	]
+}
